@@ -1,18 +1,16 @@
 // CONFIGURACIÓN DE TU REPOSITORIO DE GITHUB
-const GITHUB_USER = "tologamer1209";       // Tu usuario correcto de GitHub
-const REPO_NAME = "tologamer1209.github.io"; // El nombre exacto de tu repositorio
-const BRANCH = "main";                  // Tu rama principal
+const GITHUB_USER = "tologamer1209";       
+const REPO_NAME = "ejido-severino-ceniceros"; 
+const BRANCH = "main";                  
 
-// Verificar al cargar la página si ya hay una sesión activa en sessionStorage
 document.addEventListener('DOMContentLoaded', () => {
     const tokenGuardado = sessionStorage.getItem('gh_token');
     if (tokenGuardado) {
         const inputToken = document.getElementById('githubToken');
         if (inputToken) inputToken.value = tokenGuardado;
-        verificarToken(true); // Oculta login y muestra el panel directamente
+        verificarToken(true); 
     }
     
-    // Escuchar el evento de envío del formulario de avisos
     const formAviso = document.getElementById('avisoForm');
     if (formAviso) {
         formAviso.addEventListener('submit', publicarAviso);
@@ -28,17 +26,14 @@ function verificarToken(silencioso = false) {
         return;
     }
     
-    // Guardamos el token de forma temporal en la sesión del navegador
     sessionStorage.setItem('gh_token', token);
     
-    // Ocultamos login y mostramos panel
     const loginSection = document.getElementById('loginSection');
     const adminSection = document.getElementById('adminSection');
     
     if (loginSection) loginSection.classList.add('hidden');
     if (adminSection) adminSection.classList.remove('hidden');
 
-    // Cargamos la lista de avisos existentes para gestionarlos
     cargarAvisosAdmin();
 }
 
@@ -89,10 +84,11 @@ async function publicarAviso(e) {
         let sha = null;
         let avisosActuales = [];
 
-        // 1. Obtener siempre la versión más fresca del archivo y su SHA actual justo antes de enviar
+        // Intentar leer el archivo actual para conservar los anteriores
         const responseGet = await fetch(url, {
             headers: { 
                 "Authorization": `token ${token}`,
+                "Accept": "application/vnd.github.v3+json",
                 "Cache-Control": "no-cache"
             }
         });
@@ -115,26 +111,24 @@ async function publicarAviso(e) {
         const nuevoContenidoJson = JSON.stringify(avisosActuales, null, 2);
         const contenidoBase64 = btoa(unescape(encodeURIComponent(nuevoContenidoJson)));
 
-        // Preparamos el cuerpo de la petición
-        const bodyData = {
-            message: `Nuevo aviso añadido: ${titulo}`,
+        const payload = {
+            message: `Actualización de avisos: ${titulo}`,
             content: contenidoBase64,
             branch: BRANCH
         };
-        
-        // Solo agregamos el sha si el archivo ya existía previamente en el repositorio
+
         if (sha) {
-            bodyData.sha = sha;
+            payload.sha = sha;
         }
 
-        // 2. Enviar la actualización a GitHub
         const responseUpdate = await fetch(url, {
             method: "PUT",
             headers: {
                 "Authorization": `token ${token}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Accept": "application/vnd.github.v3+json"
             },
-            body: JSON.stringify(bodyData)
+            body: JSON.stringify(payload)
         });
 
         if (responseUpdate.ok) {
@@ -143,12 +137,12 @@ async function publicarAviso(e) {
             cargarAvisosAdmin(); 
         } else {
             const errorData = await responseUpdate.json();
-            alert("Error al publicar: " + errorData.message);
+            throw new Error(errorData.message || "Error desconocido al actualizar.");
         }
 
     } catch (error) {
         console.error(error);
-        alert("Ocurrió un error de conexión o formato.");
+        alert("Error al publicar: " + error.message);
     } finally {
         if (btn) {
             btn.textContent = "Publicar en la Página";
@@ -157,7 +151,6 @@ async function publicarAviso(e) {
     }
 }
 
-// Función para listar avisos desde el panel
 async function cargarAvisosAdmin() {
     const token = sessionStorage.getItem('gh_token');
     const contenedorLista = document.getElementById('listaAvisosAdmin');
@@ -172,6 +165,7 @@ async function cargarAvisosAdmin() {
         const response = await fetch(url, {
             headers: { 
                 "Authorization": `token ${token}`,
+                "Accept": "application/vnd.github.v3+json",
                 "Cache-Control": "no-cache"
             }
         });
@@ -201,7 +195,7 @@ async function cargarAvisosAdmin() {
             html += '</ul>';
             contenedorLista.innerHTML = html;
         } else {
-            contenedorLista.innerHTML = "<p>No se encontró el archivo avisos.json o está vacío (se creará al publicar el primero).</p>";
+            contenedorLista.innerHTML = "<p>No se encontró el archivo avisos.json (se creará automáticamente al publicar el primer aviso).</p>";
         }
     } catch (error) {
         console.error(error);
@@ -217,10 +211,10 @@ async function eliminarAviso(idAviso) {
     const url = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/${path}`;
 
     try {
-        // 1. Obtener la data más reciente y su SHA exacto antes de borrar
         const response = await fetch(url, {
             headers: { 
                 "Authorization": `token ${token}`,
+                "Accept": "application/vnd.github.v3+json",
                 "Cache-Control": "no-cache"
             }
         });
@@ -232,18 +226,17 @@ async function eliminarAviso(idAviso) {
         const jsonTexto = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
         let avisosActuales = JSON.parse(jsonTexto);
 
-        // Filtrar para quitar el aviso seleccionado
         avisosActuales = avisosActuales.filter(a => a.id !== idAviso);
 
         const nuevoContenidoJson = JSON.stringify(avisosActuales, null, 2);
         const contenidoBase64 = btoa(unescape(encodeURIComponent(nuevoContenidoJson)));
 
-        // 2. Enviar la actualización con el SHA fresco
         const responseUpdate = await fetch(url, {
             method: "PUT",
             headers: {
                 "Authorization": `token ${token}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Accept": "application/vnd.github.v3+json"
             },
             body: JSON.stringify({
                 message: `Aviso eliminado`,
