@@ -17,6 +17,8 @@
         button:hover { background-color: #219653; }
         .hidden { display: none; }
         .login-box { max-width: 400px; margin: 80px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn-danger { background-color: #e74c3c; margin-top: 15px; }
+        .btn-danger:hover { background-color: #c0392b; }
     </style>
 </head>
 <body>
@@ -31,7 +33,7 @@
         <button onclick="verificarToken()">Entrar al Panel</button>
     </div>
 
-    <!-- PANEL DE CREACIÓN DE AVISOS -->
+    <!-- PANEL DE CREACIÓN Y GESTIÓN DE AVISOS -->
     <div id="adminSection" class="admin-container hidden">
         <h2>📢 Publicar Nuevo Aviso</h2>
         <form id="avisoForm" onsubmit="publicarAviso(event)">
@@ -57,6 +59,14 @@
 
             <button type="submit" id="btnPublicar">Publicar en la Página</button>
         </form>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ddd;">
+        
+        <h3>📋 Avisos Publicados Recientemente</h3>
+        <!-- Contenedor donde admin.js dibujará la lista de avisos con su botón de eliminar -->
+        <div id="listaAvisosAdmin"></div>
+
+        <button type="button" class="btn-danger" onclick="cerrarSesion()">Cerrar Sesión</button>
     </div>
 
     <script src="admin.js"></script>
