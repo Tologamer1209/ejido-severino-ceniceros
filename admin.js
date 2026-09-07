@@ -1,485 +1,266 @@
-// CONFIGURACIÓN DE TU REPOSITORIO DE GITHUB
-const GITHUB_USER = "tologamer1209";
-const REPO_NAME = "ejido-severino-ceniceros";
-const BRANCH = "main";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-document.addEventListener('DOMContentLoaded', () => {
-    const tokenGuardado = sessionStorage.getItem('gh_token');
+    <title>Panel de Administración - Ejido</title>
 
-    if (tokenGuardado) {
-        const inputToken = document.getElementById('githubToken');
+    <link rel="stylesheet" href="estilos.css">
 
-        if (inputToken) {
-            inputToken.value = tokenGuardado;
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
         }
 
-        verificarToken(true);
-    }
-
-    const formAviso = document.getElementById('avisoForm');
-
-    if (formAviso) {
-        formAviso.addEventListener('submit', publicarAviso);
-    }
-});
-
-function verificarToken(silencioso = false) {
-    const tokenInput = document.getElementById('githubToken');
-
-    const token = tokenInput
-        ? tokenInput.value.trim()
-        : sessionStorage.getItem('gh_token');
-
-    if (!token) {
-        if (!silencioso) {
-            alert("Por favor ingresa un token válido.");
-        }
-        return;
-    }
-
-    sessionStorage.setItem('gh_token', token);
-
-    const loginSection = document.getElementById('loginSection');
-    const adminSection = document.getElementById('adminSection');
-
-    if (loginSection) {
-        loginSection.classList.add('hidden');
-    }
-
-    if (adminSection) {
-        adminSection.classList.remove('hidden');
-    }
-
-    cargarAvisosAdmin();
-}
-
-function cerrarSesion() {
-    sessionStorage.removeItem('gh_token');
-
-    const adminSection = document.getElementById('adminSection');
-    const loginSection = document.getElementById('loginSection');
-    const githubToken = document.getElementById('githubToken');
-
-    if (adminSection) {
-        adminSection.classList.add('hidden');
-    }
-
-    if (loginSection) {
-        loginSection.classList.remove('hidden');
-    }
-
-    if (githubToken) {
-        githubToken.value = '';
-    }
-}
-
-async function publicarAviso(e) {
-    e.preventDefault();
-
-    const token = sessionStorage.getItem('gh_token');
-
-    if (!token) {
-        alert("Sesión expirada. Ingresa tu token de nuevo.");
-        cerrarSesion();
-        return;
-    }
-
-    const titulo = document.getElementById('titulo').value.trim();
-    const fecha = document.getElementById('fecha').value;
-    const resumen = document.getElementById('resumen').value.trim();
-    const enlaceFacebook = document.getElementById('enlaceFacebook').value.trim();
-
-    const btn = document.getElementById('btnPublicar');
-
-    if (btn) {
-        btn.textContent = "Publicando...";
-        btn.disabled = true;
-    }
-
-    const nuevoAviso = {
-        titulo: titulo,
-        fecha: fecha,
-        resumen: resumen,
-        enlaceFacebook: enlaceFacebook,
-        id: Date.now()
-    };
-
-    try {
-        const path = "avisos.json";
-
-        const url = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/${path}`;
-
-        let sha = null;
-        let avisosActuales = [];
-
-        // ==========================================
-        // OBTENER AVISOS ACTUALES
-        // ==========================================
-
-        const responseGet = await fetch(url, {
-            headers: {
-                "Authorization": `token ${token}`,
-                "Accept": "application/vnd.github.v3+json"
-            }
-        });
-
-        if (responseGet.ok) {
-            const data = await responseGet.json();
-
-            sha = data.sha;
-
-            try {
-                const jsonTexto = new TextDecoder().decode(
-                    Uint8Array.from(
-                        atob(data.content),
-                        c => c.charCodeAt(0)
-                    )
-                );
-
-                avisosActuales = JSON.parse(jsonTexto);
-
-                if (!Array.isArray(avisosActuales)) {
-                    avisosActuales = [];
-                }
-            } catch (err) {
-                console.error("Error al leer avisos.json:", err);
-                avisosActuales = [];
-            }
+        .admin-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
-        // ==========================================
-        // AGREGAR NUEVO AVISO
-        // ==========================================
-
-        avisosActuales.unshift(nuevoAviso);
-
-        const nuevoContenidoJson = JSON.stringify(
-            avisosActuales,
-            null,
-            2
-        );
-
-        const contenidoBase64 = btoa(
-            unescape(
-                encodeURIComponent(nuevoContenidoJson)
-            )
-        );
-
-        const payload = {
-            message: `Actualización de avisos: ${titulo}`,
-            content: contenidoBase64,
-            branch: BRANCH
-        };
-
-        if (sha) {
-            payload.sha = sha;
+        h2 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
         }
 
-        // ==========================================
-        // ACTUALIZAR GITHUB
-        // ==========================================
-
-        const responseUpdate = await fetch(url, {
-            method: "PUT",
-            headers: {
-                "Authorization": `token ${token}`,
-                "Content-Type": "application/json",
-                "Accept": "application/vnd.github.v3+json"
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (responseUpdate.ok) {
-            alert("¡Aviso publicado con éxito en la página!");
-
-            const formulario = document.getElementById('avisoForm');
-
-            if (formulario) {
-                formulario.reset();
-            }
-
-            cargarAvisosAdmin();
-
-        } else {
-            let errorData = {};
-
-            try {
-                errorData = await responseUpdate.json();
-            } catch (err) {
-                errorData = {};
-            }
-
-            throw new Error(
-                errorData.message ||
-                `Error HTTP ${responseUpdate.status}`
-            );
+        .form-group {
+            margin-bottom: 15px;
         }
 
-    } catch (error) {
-        console.error(error);
-
-        alert(
-            "Error al publicar: " +
-            error.message
-        );
-
-    } finally {
-        if (btn) {
-            btn.textContent = "Publicar en la Página";
-            btn.disabled = false;
-        }
-    }
-}
-
-async function cargarAvisosAdmin() {
-    const token = sessionStorage.getItem('gh_token');
-
-    const contenedorLista =
-        document.getElementById('listaAvisosAdmin');
-
-    if (!token || !contenedorLista) {
-        return;
-    }
-
-    contenedorLista.innerHTML =
-        "<p>Cargando avisos actuales...</p>";
-
-    try {
-        const path = "avisos.json";
-
-        const url =
-            `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/${path}`;
-
-        const response = await fetch(url, {
-            headers: {
-                "Authorization": `token ${token}`,
-                "Accept": "application/vnd.github.v3+json"
-            }
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-
-            const jsonTexto = new TextDecoder().decode(
-                Uint8Array.from(
-                    atob(data.content),
-                    c => c.charCodeAt(0)
-                )
-            );
-
-            const avisos = JSON.parse(jsonTexto);
-
-            if (
-                !Array.isArray(avisos) ||
-                avisos.length === 0
-            ) {
-                contenedorLista.innerHTML =
-                    "<p>No hay avisos publicados todavía.</p>";
-
-                return;
-            }
-
-            let html =
-                '<ul style="list-style: none; padding: 0;">';
-
-            avisos.forEach(aviso => {
-                html += `
-                    <li style="
-                        background: #f9f9f9;
-                        border: 1px solid #ddd;
-                        padding: 12px;
-                        margin-bottom: 10px;
-                        border-radius: 6px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    ">
-                        <div>
-                            <strong>${aviso.titulo}</strong>
-                            <small>(${aviso.fecha})</small>
-
-                            <p style="
-                                margin: 5px 0 0 0;
-                                font-size: 0.9rem;
-                                color: #666;
-                            ">
-                                ${aviso.resumen}
-                            </p>
-                        </div>
-
-                        <button
-                            type="button"
-                            onclick="eliminarAviso(${aviso.id})"
-                            style="
-                                background: #e74c3c;
-                                color: white;
-                                border: none;
-                                padding: 6px 12px;
-                                border-radius: 4px;
-                                cursor: pointer;
-                            "
-                        >
-                            Eliminar
-                        </button>
-                    </li>
-                `;
-            });
-
-            html += '</ul>';
-
-            contenedorLista.innerHTML = html;
-
-        } else {
-            contenedorLista.innerHTML =
-                "<p>No se encontró el archivo avisos.json (se creará automáticamente al publicar el primer aviso).</p>";
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #34495e;
         }
 
-    } catch (error) {
-        console.error(error);
-
-        contenedorLista.innerHTML =
-            "<p>Error al cargar los avisos existentes.</p>";
-    }
-}
-
-async function eliminarAviso(idAviso) {
-    if (
-        !confirm(
-            "¿Estás seguro de que deseas eliminar este aviso?"
-        )
-    ) {
-        return;
-    }
-
-    const token =
-        sessionStorage.getItem('gh_token');
-
-    if (!token) {
-        alert("Sesión expirada. Ingresa tu token de nuevo.");
-        cerrarSesion();
-        return;
-    }
-
-    const path = "avisos.json";
-
-    const url =
-        `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/${path}`;
-
-    try {
-        // ==========================================
-        // OBTENER ARCHIVO ACTUAL
-        // ==========================================
-
-        const response = await fetch(url, {
-            headers: {
-                "Authorization": `token ${token}`,
-                "Accept": "application/vnd.github.v3+json"
-            }
-        });
-
-        if (!response.ok) {
-            alert(
-                "No se pudo obtener el archivo para actualizar."
-            );
-            return;
+        input[type="text"],
+        input[type="password"],
+        input[type="date"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
         }
 
-        const data = await response.json();
-
-        const sha = data.sha;
-
-        const jsonTexto = new TextDecoder().decode(
-            Uint8Array.from(
-                atob(data.content),
-                c => c.charCodeAt(0)
-            )
-        );
-
-        let avisosActuales = JSON.parse(jsonTexto);
-
-        if (!Array.isArray(avisosActuales)) {
-            alert("El archivo avisos.json no contiene una lista válida.");
-            return;
+        textarea {
+            resize: vertical;
+            height: 100px;
         }
 
-        // ==========================================
-        // ELIMINAR AVISO
-        // ==========================================
-
-        avisosActuales =
-            avisosActuales.filter(
-                a => a.id !== idAviso
-            );
-
-        const nuevoContenidoJson =
-            JSON.stringify(
-                avisosActuales,
-                null,
-                2
-            );
-
-        const contenidoBase64 =
-            btoa(
-                unescape(
-                    encodeURIComponent(
-                        nuevoContenidoJson
-                    )
-                )
-            );
-
-        // ==========================================
-        // ACTUALIZAR GITHUB
-        // ==========================================
-
-        const responseUpdate =
-            await fetch(url, {
-                method: "PUT",
-
-                headers: {
-                    "Authorization": `token ${token}`,
-                    "Content-Type": "application/json",
-                    "Accept": "application/vnd.github.v3+json"
-                },
-
-                body: JSON.stringify({
-                    message: "Aviso eliminado",
-                    content: contenidoBase64,
-                    sha: sha,
-                    branch: BRANCH
-                })
-            });
-
-        if (responseUpdate.ok) {
-            alert(
-                "Aviso eliminado correctamente."
-            );
-
-            cargarAvisosAdmin();
-
-        } else {
-            let errorData = {};
-
-            try {
-                errorData = await responseUpdate.json();
-            } catch (err) {
-                errorData = {};
-            }
-
-            alert(
-                "No se pudo eliminar el aviso: " +
-                (
-                    errorData.message ||
-                    `Error HTTP ${responseUpdate.status}`
-                )
-            );
+        button {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
         }
 
-    } catch (error) {
-        console.error(error);
+        button:hover {
+            background-color: #219653;
+        }
 
-        alert(
-            "Ocurrió un error al procesar la eliminación: " +
-            error.message
-        );
-    }
-}
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .login-box {
+            max-width: 400px;
+            margin: 80px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn-danger {
+            background-color: #e74c3c;
+            margin-top: 15px;
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        hr {
+            margin: 30px 0;
+            border: 0;
+            border-top: 1px solid #ddd;
+        }
+
+        #listaAvisosAdmin {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ==========================================
+         PANTALLA DE ACCESO
+         ========================================== -->
+
+    <div id="loginSection" class="login-box">
+
+        <h2>🔑 Acceso Administrador</h2>
+
+        <div class="form-group">
+
+            <label for="githubToken">
+                Token de GitHub (Personal Access Token):
+            </label>
+
+            <input
+                type="password"
+                id="githubToken"
+                placeholder="ghp_xxxxxxxxxxxx"
+                autocomplete="off"
+            >
+
+        </div>
+
+        <button
+            type="button"
+            onclick="verificarToken()"
+        >
+            Entrar al Panel
+        </button>
+
+    </div>
+
+
+    <!-- ==========================================
+         PANEL DE ADMINISTRACIÓN
+         ========================================== -->
+
+    <div id="adminSection" class="admin-container hidden">
+
+        <h2>📢 Publicar Nuevo Aviso</h2>
+
+        <form id="avisoForm">
+
+            <div class="form-group">
+
+                <label for="titulo">
+                    Título del aviso:
+                </label>
+
+                <input
+                    type="text"
+                    id="titulo"
+                    required
+                    placeholder="Ej. Próxima Asamblea General"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="fecha">
+                    Fecha del aviso o evento:
+                </label>
+
+                <input
+                    type="date"
+                    id="fecha"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="resumen">
+                    Resumen breve:
+                </label>
+
+                <textarea
+                    id="resumen"
+                    required
+                    placeholder="Escribe de qué trata el aviso..."
+                ></textarea>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="enlaceFacebook">
+                    Enlace completo de Facebook (Opcional):
+                </label>
+
+                <input
+                    type="text"
+                    id="enlaceFacebook"
+                    placeholder="https://www.facebook.com/share/p/..."
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                id="btnPublicar"
+            >
+                Publicar en la Página
+            </button>
+
+        </form>
+
+
+        <hr>
+
+
+        <h3>
+            📋 Avisos Publicados Recientemente
+        </h3>
+
+
+        <div id="listaAvisosAdmin">
+            <p>
+                Cargando avisos actuales...
+            </p>
+        </div>
+
+
+        <button
+            type="button"
+            class="btn-danger"
+            onclick="cerrarSesion()"
+        >
+            Cerrar Sesión
+        </button>
+
+    </div>
+
+
+    <!-- ==========================================
+         JAVASCRIPT
+         ========================================== -->
+
+    <script src="admin.js?v=5"></script>
+
+</body>
+</html>
