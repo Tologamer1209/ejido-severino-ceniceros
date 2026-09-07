@@ -1,4 +1,3 @@
-javascript
 // CONFIGURACIÓN DE TU REPOSITORIO DE GITHUB
 const GITHUB_USER = "tologamer1209";
 const REPO_NAME = "ejido-severino-ceniceros";
