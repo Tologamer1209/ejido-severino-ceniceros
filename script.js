@@ -310,7 +310,6 @@ function abrirVisorPDF(urlPdf, titulo) {
     const tituloEl = document.getElementById('visorTitulo');
 
     if (modal && iframe) {
-        // Asignamos directamente la ruta al iframe para que cargue en pantalla
         iframe.src = urlPdf;
         if (tituloEl) tituloEl.textContent = titulo;
 
@@ -352,3 +351,54 @@ document.addEventListener('keydown', (e) => {
         cerrarVisorPDFDirecto();
     }
 });
+
+
+// ==========================================
+// 6. CARGAR AVISOS DINÁMICOS DESDE EL PANEL
+// ==========================================
+
+async function cargarAvisosPublicos() {
+    const contenedor = document.getElementById('contenedorAvisos');
+    if (!contenedor) return;
+
+    try {
+        const respuesta = await fetch('avisos.json');
+        
+        if (!respuesta.ok) {
+            contenedor.innerHTML = "<p>No hay avisos recientes por el momento.</p>";
+            return;
+        }
+
+        const avisos = await respuesta.json();
+
+        if (avisos.length === 0) {
+            contenedor.innerHTML = "<p>No hay avisos publicados todavía.</p>";
+            return;
+        }
+
+        contenedor.innerHTML = "";
+
+        avisos.forEach(aviso => {
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'aviso-card';
+            
+            tarjeta.innerHTML = `
+                <div class="aviso-header">
+                    <h3>📢 ${aviso.titulo}</h3>
+                    <span class="aviso-fecha">📅 ${aviso.fecha}</span>
+                </div>
+                <p class="aviso-resumen">${aviso.resumen}</p>
+                ${aviso.enlaceFacebook ? `<a href="${aviso.enlaceFacebook}" target="_blank" class="btn-facebook">🔵 Ver aviso completo en Facebook</a>` : ''}
+            `;
+            
+            contenedor.appendChild(tarjeta);
+        });
+
+    } catch (error) {
+        console.error("Error al cargar los avisos:", error);
+        // Si aún no se ha creado el archivo avisos.json, mostramos un mensaje limpio
+        contenedor.innerHTML = "<p>No hay avisos recientes por el momento.</p>";
+    }
+}
+
+document.addEventListener('DOMContentLoaded', cargarAvisosPublicos);
