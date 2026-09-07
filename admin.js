@@ -1,13 +1,14 @@
 // CONFIGURACIÓN DE TU REPOSITORIO DE GITHUB
-const GITHUB_USER = "Tologamer1209";      // Tu usuario correcto de GitHub
-const REPO_NAME = "ejido-severino-ceniceros"; // El nombre exacto de tu repositorio
+const GITHUB_USER = "tologamer1209";       // Tu usuario correcto de GitHub
+const REPO_NAME = "tologamer1209.github.io"; // El nombre exacto de tu repositorio
 const BRANCH = "main";                  // Tu rama principal
 
 // Verificar al cargar la página si ya hay una sesión activa en sessionStorage
 document.addEventListener('DOMContentLoaded', () => {
     const tokenGuardado = sessionStorage.getItem('gh_token');
     if (tokenGuardado) {
-        document.getElementById('githubToken').value = tokenGuardado;
+        const inputToken = document.getElementById('githubToken');
+        if (inputToken) inputToken.value = tokenGuardado;
         verificarToken(true); // Oculta login y muestra el panel directamente
     }
     
@@ -19,7 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function verificarToken(silencioso = false) {
-    const token = document.getElementById('githubToken').value.trim();
+    const tokenInput = document.getElementById('githubToken');
+    const token = tokenInput ? tokenInput.value.trim() : sessionStorage.getItem('gh_token');
+    
     if (!token) {
         if (!silencioso) alert("Por favor ingresa un token válido.");
         return;
@@ -29,8 +32,11 @@ function verificarToken(silencioso = false) {
     sessionStorage.setItem('gh_token', token);
     
     // Ocultamos login y mostramos panel
-    document.getElementById('loginSection').classList.add('hidden');
-    document.getElementById('adminSection').classList.remove('hidden');
+    const loginSection = document.getElementById('loginSection');
+    const adminSection = document.getElementById('adminSection');
+    
+    if (loginSection) loginSection.classList.add('hidden');
+    if (adminSection) adminSection.classList.remove('hidden');
 
     // Cargamos la lista de avisos existentes para gestionarlos
     cargarAvisosAdmin();
@@ -38,9 +44,13 @@ function verificarToken(silencioso = false) {
 
 function cerrarSesion() {
     sessionStorage.removeItem('gh_token');
-    document.getElementById('adminSection').classList.add('hidden');
-    document.getElementById('loginSection').classList.remove('hidden');
-    document.getElementById('githubToken').value = '';
+    const adminSection = document.getElementById('adminSection');
+    const loginSection = document.getElementById('loginSection');
+    const githubToken = document.getElementById('githubToken');
+
+    if (adminSection) adminSection.classList.add('hidden');
+    if (loginSection) loginSection.classList.remove('hidden');
+    if (githubToken) githubToken.value = '';
 }
 
 async function publicarAviso(e) {
@@ -59,8 +69,10 @@ async function publicarAviso(e) {
     const enlaceFacebook = document.getElementById('enlaceFacebook').value;
 
     const btn = document.getElementById('btnPublicar');
-    btn.textContent = "Publicando...";
-    btn.disabled = true;
+    if (btn) {
+        btn.textContent = "Publicando...";
+        btn.disabled = true;
+    }
 
     // Estructura de datos para el aviso nuevo
     const nuevoAviso = {
@@ -126,12 +138,14 @@ async function publicarAviso(e) {
         console.error(error);
         alert("Ocurrió un error de conexión o formato.");
     } finally {
-        btn.textContent = "Publicar en la Página";
-        btn.disabled = false;
+        if (btn) {
+            btn.textContent = "Publicar en la Página";
+            btn.disabled = false;
+        }
     }
 }
 
-// Función auxiliar opcional para listar y eliminar avisos desde el panel
+// Función para listar y eliminar avisos desde el panel
 async function cargarAvisosAdmin() {
     const token = sessionStorage.getItem('gh_token');
     const contenedorLista = document.getElementById('listaAvisosAdmin');
@@ -165,14 +179,14 @@ async function cargarAvisosAdmin() {
                             <strong>${aviso.titulo}</strong> <small>(${aviso.fecha})</small>
                             <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: #666;">${aviso.resumen}</p>
                         </div>
-                        <button onclick="eliminarAviso(${aviso.id})" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Eliminar</button>
+                        <button type="button" onclick="eliminarAviso(${aviso.id})" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Eliminar</button>
                     </li>
                 `;
             });
             html += '</ul>';
             contenedorLista.innerHTML = html;
         } else {
-            contenedorLista.innerHTML = "<p>No se encontró el archivo avisos.json o está vacío.</p>";
+            contenedorLista.innerHTML = "<p>No se encontró el archivo avisos.json o está vacío (se creará al publicar el primero).</p>";
         }
     } catch (error) {
         console.error(error);
