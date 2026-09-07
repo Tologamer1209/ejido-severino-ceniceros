@@ -490,5 +490,4 @@ async function eliminarAviso(idAviso) {
         );
     }
 }
-```
 
