@@ -63,10 +63,10 @@ async function publicarAviso(e) {
         return;
     }
 
-    const titulo = document.getElementById('titulo').value;
+    const titulo = document.getElementById('titulo').value.trim();
     const fecha = document.getElementById('fecha').value;
-    const resumen = document.getElementById('resumen').value;
-    const enlaceFacebook = document.getElementById('enlaceFacebook').value;
+    const resumen = document.getElementById('resumen').value.trim();
+    const enlaceFacebook = document.getElementById('enlaceFacebook').value.trim();
 
     const btn = document.getElementById('btnPublicar');
     if (btn) {
@@ -74,61 +74,73 @@ async function publicarAviso(e) {
         btn.disabled = true;
     }
 
-    // Estructura de datos para el aviso nuevo
     const nuevoAviso = {
         titulo,
         fecha,
         resumen,
         enlaceFacebook,
-        id: Date.now() // Identificador único basado en el tiempo
+        id: Date.now()
     };
 
     try {
         const path = "avisos.json";
         const url = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/${path}`;
 
-        let sha = "";
+        let sha = null;
         let avisosActuales = [];
 
-        const response = await fetch(url, {
-            headers: { "Authorization": `token ${token}` }
+        // 1. Obtener siempre la versión más fresca del archivo y su SHA actual justo antes de enviar
+        const responseGet = await fetch(url, {
+            headers: { 
+                "Authorization": `token ${token}`,
+                "Cache-Control": "no-cache"
+            }
         });
 
-        if (response.ok) {
-            const data = await response.json();
-            sha = data.sha; // Necesario en GitHub para actualizar archivos existentes
-            
-            // Decodificación segura en UTF-8 para soportar tildes y caracteres especiales
-            const jsonTexto = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
-            avisosActuales = JSON.parse(jsonTexto);
+        if (responseGet.ok) {
+            const data = await responseGet.json();
+            sha = data.sha; 
+            try {
+                const jsonTexto = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
+                avisosActuales = JSON.parse(jsonTexto);
+                if (!Array.isArray(avisosActuales)) avisosActuales = [];
+            } catch (err) {
+                avisosActuales = [];
+            }
         }
 
-        // Agregamos el nuevo aviso al inicio de la lista
+        // Agregar el nuevo aviso al inicio
         avisosActuales.unshift(nuevoAviso);
 
-        // Convertimos la lista a texto JSON y la codificamos de manera segura en Base64 (UTF-8)
         const nuevoContenidoJson = JSON.stringify(avisosActuales, null, 2);
         const contenidoBase64 = btoa(unescape(encodeURIComponent(nuevoContenidoJson)));
 
-        // Enviamos el commit automático a GitHub
+        // Preparamos el cuerpo de la petición
+        const bodyData = {
+            message: `Nuevo aviso añadido: ${titulo}`,
+            content: contenidoBase64,
+            branch: BRANCH
+        };
+        
+        // Solo agregamos el sha si el archivo ya existía previamente en el repositorio
+        if (sha) {
+            bodyData.sha = sha;
+        }
+
+        // 2. Enviar la actualización a GitHub
         const responseUpdate = await fetch(url, {
             method: "PUT",
             headers: {
                 "Authorization": `token ${token}`,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                message: `Nuevo aviso añadido: ${titulo}`,
-                content: contenidoBase64,
-                sha: sha ? sha : undefined,
-                branch: BRANCH
-            })
+            body: JSON.stringify(bodyData)
         });
 
         if (responseUpdate.ok) {
             alert("¡Aviso publicado con éxito en la página!");
             document.getElementById('avisoForm').reset();
-            cargarAvisosAdmin(); // Actualiza la lista en el panel
+            cargarAvisosAdmin(); 
         } else {
             const errorData = await responseUpdate.json();
             alert("Error al publicar: " + errorData.message);
@@ -145,7 +157,7 @@ async function publicarAviso(e) {
     }
 }
 
-// Función para listar y eliminar avisos desde el panel
+// Función para listar avisos desde el panel
 async function cargarAvisosAdmin() {
     const token = sessionStorage.getItem('gh_token');
     const contenedorLista = document.getElementById('listaAvisosAdmin');
@@ -158,7 +170,10 @@ async function cargarAvisosAdmin() {
         const url = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/${path}`;
 
         const response = await fetch(url, {
-            headers: { "Authorization": `token ${token}` }
+            headers: { 
+                "Authorization": `token ${token}`,
+                "Cache-Control": "no-cache"
+            }
         });
 
         if (response.ok) {
@@ -166,7 +181,7 @@ async function cargarAvisosAdmin() {
             const jsonTexto = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
             const avisos = JSON.parse(jsonTexto);
 
-            if (avisos.length === 0) {
+            if (!Array.isArray(avisos) || avisos.length === 0) {
                 contenedorLista.innerHTML = "<p>No hay avisos publicados todavía.</p>";
                 return;
             }
@@ -202,8 +217,12 @@ async function eliminarAviso(idAviso) {
     const url = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/${path}`;
 
     try {
+        // 1. Obtener la data más reciente y su SHA exacto antes de borrar
         const response = await fetch(url, {
-            headers: { "Authorization": `token ${token}` }
+            headers: { 
+                "Authorization": `token ${token}`,
+                "Cache-Control": "no-cache"
+            }
         });
 
         if (!response.ok) return alert("No se pudo obtener el archivo para actualizar.");
@@ -213,12 +232,13 @@ async function eliminarAviso(idAviso) {
         const jsonTexto = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
         let avisosActuales = JSON.parse(jsonTexto);
 
-        // Filtramos para quitar el aviso seleccionado
+        // Filtrar para quitar el aviso seleccionado
         avisosActuales = avisosActuales.filter(a => a.id !== idAviso);
 
         const nuevoContenidoJson = JSON.stringify(avisosActuales, null, 2);
         const contenidoBase64 = btoa(unescape(encodeURIComponent(nuevoContenidoJson)));
 
+        // 2. Enviar la actualización con el SHA fresco
         const responseUpdate = await fetch(url, {
             method: "PUT",
             headers: {
