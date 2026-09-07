@@ -34,7 +34,6 @@ function verificarToken(silencioso = false) {
         if (!silencioso) {
             alert("Por favor ingresa un token válido.");
         }
-
         return;
     }
 
@@ -98,10 +97,10 @@ async function publicarAviso(e) {
     }
 
     const nuevoAviso = {
-        titulo,
-        fecha,
-        resumen,
-        enlaceFacebook,
+        titulo: titulo,
+        fecha: fecha,
+        resumen: resumen,
+        enlaceFacebook: enlaceFacebook,
         id: Date.now()
     };
 
@@ -142,7 +141,6 @@ async function publicarAviso(e) {
                 if (!Array.isArray(avisosActuales)) {
                     avisosActuales = [];
                 }
-
             } catch (err) {
                 console.error("Error al leer avisos.json:", err);
                 avisosActuales = [];
@@ -150,7 +148,7 @@ async function publicarAviso(e) {
         }
 
         // ==========================================
-        // AGREGAR NUEVO AVISO AL INICIO
+        // AGREGAR NUEVO AVISO
         // ==========================================
 
         avisosActuales.unshift(nuevoAviso);
@@ -183,36 +181,41 @@ async function publicarAviso(e) {
 
         const responseUpdate = await fetch(url, {
             method: "PUT",
-
             headers: {
                 "Authorization": `token ${token}`,
                 "Content-Type": "application/json",
                 "Accept": "application/vnd.github.v3+json"
             },
-
             body: JSON.stringify(payload)
         });
 
         if (responseUpdate.ok) {
-
             alert("¡Aviso publicado con éxito en la página!");
 
-            document.getElementById('avisoForm').reset();
+            const formulario = document.getElementById('avisoForm');
+
+            if (formulario) {
+                formulario.reset();
+            }
 
             cargarAvisosAdmin();
 
         } else {
+            let errorData = {};
 
-            const errorData = await responseUpdate.json();
+            try {
+                errorData = await responseUpdate.json();
+            } catch (err) {
+                errorData = {};
+            }
 
             throw new Error(
                 errorData.message ||
-                "Error desconocido al actualizar."
+                `Error HTTP ${responseUpdate.status}`
             );
         }
 
     } catch (error) {
-
         console.error(error);
 
         alert(
@@ -221,7 +224,6 @@ async function publicarAviso(e) {
         );
 
     } finally {
-
         if (btn) {
             btn.textContent = "Publicar en la Página";
             btn.disabled = false;
@@ -230,7 +232,6 @@ async function publicarAviso(e) {
 }
 
 async function cargarAvisosAdmin() {
-
     const token = sessionStorage.getItem('gh_token');
 
     const contenedorLista =
@@ -244,7 +245,6 @@ async function cargarAvisosAdmin() {
         "<p>Cargando avisos actuales...</p>";
 
     try {
-
         const path = "avisos.json";
 
         const url =
@@ -258,7 +258,6 @@ async function cargarAvisosAdmin() {
         });
 
         if (response.ok) {
-
             const data = await response.json();
 
             const jsonTexto = new TextDecoder().decode(
@@ -274,7 +273,6 @@ async function cargarAvisosAdmin() {
                 !Array.isArray(avisos) ||
                 avisos.length === 0
             ) {
-
                 contenedorLista.innerHTML =
                     "<p>No hay avisos publicados todavía.</p>";
 
@@ -285,7 +283,6 @@ async function cargarAvisosAdmin() {
                 '<ul style="list-style: none; padding: 0;">';
 
             avisos.forEach(aviso => {
-
                 html += `
                     <li style="
                         background: #f9f9f9;
@@ -297,16 +294,9 @@ async function cargarAvisosAdmin() {
                         justify-content: space-between;
                         align-items: center;
                     ">
-
                         <div>
-
-                            <strong>
-                                ${aviso.titulo}
-                            </strong>
-
-                            <small>
-                                (${aviso.fecha})
-                            </small>
+                            <strong>${aviso.titulo}</strong>
+                            <small>(${aviso.fecha})</small>
 
                             <p style="
                                 margin: 5px 0 0 0;
@@ -315,7 +305,6 @@ async function cargarAvisosAdmin() {
                             ">
                                 ${aviso.resumen}
                             </p>
-
                         </div>
 
                         <button
@@ -332,7 +321,6 @@ async function cargarAvisosAdmin() {
                         >
                             Eliminar
                         </button>
-
                     </li>
                 `;
             });
@@ -342,13 +330,11 @@ async function cargarAvisosAdmin() {
             contenedorLista.innerHTML = html;
 
         } else {
-
             contenedorLista.innerHTML =
                 "<p>No se encontró el archivo avisos.json (se creará automáticamente al publicar el primer aviso).</p>";
         }
 
     } catch (error) {
-
         console.error(error);
 
         contenedorLista.innerHTML =
@@ -357,7 +343,6 @@ async function cargarAvisosAdmin() {
 }
 
 async function eliminarAviso(idAviso) {
-
     if (
         !confirm(
             "¿Estás seguro de que deseas eliminar este aviso?"
@@ -369,13 +354,18 @@ async function eliminarAviso(idAviso) {
     const token =
         sessionStorage.getItem('gh_token');
 
+    if (!token) {
+        alert("Sesión expirada. Ingresa tu token de nuevo.");
+        cerrarSesion();
+        return;
+    }
+
     const path = "avisos.json";
 
     const url =
         `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/${path}`;
 
     try {
-
         // ==========================================
         // OBTENER ARCHIVO ACTUAL
         // ==========================================
@@ -388,11 +378,9 @@ async function eliminarAviso(idAviso) {
         });
 
         if (!response.ok) {
-
             alert(
                 "No se pudo obtener el archivo para actualizar."
             );
-
             return;
         }
 
@@ -407,8 +395,12 @@ async function eliminarAviso(idAviso) {
             )
         );
 
-        let avisosActuales =
-            JSON.parse(jsonTexto);
+        let avisosActuales = JSON.parse(jsonTexto);
+
+        if (!Array.isArray(avisosActuales)) {
+            alert("El archivo avisos.json no contiene una lista válida.");
+            return;
+        }
 
         // ==========================================
         // ELIMINAR AVISO
@@ -450,19 +442,14 @@ async function eliminarAviso(idAviso) {
                 },
 
                 body: JSON.stringify({
-
                     message: "Aviso eliminado",
-
                     content: contenidoBase64,
-
                     sha: sha,
-
                     branch: BRANCH
                 })
             });
 
         if (responseUpdate.ok) {
-
             alert(
                 "Aviso eliminado correctamente."
             );
@@ -470,23 +457,29 @@ async function eliminarAviso(idAviso) {
             cargarAvisosAdmin();
 
         } else {
+            let errorData = {};
 
-            const errorData =
-                await responseUpdate.json();
+            try {
+                errorData = await responseUpdate.json();
+            } catch (err) {
+                errorData = {};
+            }
 
             alert(
                 "No se pudo eliminar el aviso: " +
-                (errorData.message || "Error desconocido")
+                (
+                    errorData.message ||
+                    `Error HTTP ${responseUpdate.status}`
+                )
             );
         }
 
     } catch (error) {
-
         console.error(error);
 
         alert(
-            "Ocurrió un error al procesar la eliminación."
+            "Ocurrió un error al procesar la eliminación: " +
+            error.message
         );
     }
 }
-
