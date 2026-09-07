@@ -1,5 +1,5 @@
 // CONFIGURACIÓN DE TU REPOSITORIO DE GITHUB
-const GITHUB_USER = "Tologamer109";      // Tu usuario de GitHub
+const GITHUB_USER = "Tologamer1209";      // Tu usuario correcto de GitHub
 const REPO_NAME = "ejido-severino-ceniceros"; // El nombre exacto de tu repositorio
 const BRANCH = "main";                  // Tu rama principal
 
